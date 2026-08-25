@@ -14,10 +14,9 @@ class Proqi < Formula
   end
 
   on_linux do
-    on_intel do
-      url "https://github.com/oborchers/proqi/releases/download/v0.1.0/proqi-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "9a053e672e1ad2db6cce617d121a8b0781415a20a68e626bbb3476065c6eba60"
-    end
+    depends_on arch: :x86_64
+    url "https://github.com/oborchers/proqi/releases/download/v0.1.0/proqi-x86_64-unknown-linux-gnu.tar.gz"
+    sha256 "9a053e672e1ad2db6cce617d121a8b0781415a20a68e626bbb3476065c6eba60"
   end
 
   def install
