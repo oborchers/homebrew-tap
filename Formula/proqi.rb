@@ -1,7 +1,6 @@
 class Proqi < Formula
   desc "Agent-optimized terminal scratchpad for follow-up prompts"
   homepage "https://github.com/oborchers/proqi"
-  version "0.1.0"
   license "MIT"
 
   on_macos do
