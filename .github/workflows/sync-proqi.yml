@@ -40,6 +40,8 @@ jobs:
           tag="$(gh release view --repo "$PROQI_REPOSITORY" --json tagName,isDraft,isPrerelease \
             --jq 'select(.isDraft == false and .isPrerelease == false) | .tagName')"
           [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          source_sha="$(gh api "repos/${PROQI_REPOSITORY}/commits/${tag}" --jq .sha)"
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
           mkdir -p candidate/release
           gh release download "$tag" --repo "$PROQI_REPOSITORY" --dir candidate/release \
             --pattern 'proqi.rb' --pattern 'proqi-*.tar.gz' --pattern 'proqi-*.tar.gz.sha256' \
@@ -52,16 +54,17 @@ jobs:
           for archive in ./*.tar.gz; do
             gh attestation verify "$archive" --repo "$PROQI_REPOSITORY" \
               --signer-workflow "github.com/${PROQI_REPOSITORY}/.github/workflows/release.yml" \
-              --source-ref "refs/tags/${tag}"
+              --source-ref "refs/tags/${tag}" --source-digest "$source_sha"
             gh attestation verify "$archive" --repo "$PROQI_REPOSITORY" \
               --signer-workflow "github.com/${PROQI_REPOSITORY}/.github/workflows/release.yml" \
-              --source-ref "refs/tags/${tag}" --predicate-type https://spdx.dev/Document/v2.3
+              --source-ref "refs/tags/${tag}" --source-digest "$source_sha" \
+              --predicate-type https://spdx.dev/Document/v2.3
           done
           ruby -c proqi.rb
-          rg -F "releases/download/${tag}/" proqi.rb
+          grep -F "releases/download/${tag}/" proqi.rb
           for checksum in ./*.sha256; do
             digest="$(cut -d ' ' -f 1 "$checksum")"
-            rg -F "sha256 \"${digest}\"" proqi.rb
+            grep -F "sha256 \"${digest}\"" proqi.rb
           done
           cd ../..
           current_tag="$(sed -n 's#.*releases/download/\(v[0-9][0-9.]*\)/.*#\1#p' Formula/proqi.rb | head -n 1)"
