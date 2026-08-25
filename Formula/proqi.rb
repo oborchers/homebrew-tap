@@ -23,7 +23,6 @@ class Proqi < Formula
 
   def install
     bin.install "proqi"
-    bin.install "proqi-installation.json"
     bash_completion.install "completions/proqi.bash" => "proqi"
     zsh_completion.install "completions/_proqi"
     fish_completion.install "completions/proqi.fish"
