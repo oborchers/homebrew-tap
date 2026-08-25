@@ -8,12 +8,17 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: tap-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 defaults:
   run:
     shell: bash -xeuo pipefail {0}
 
 jobs:
   test-bot:
+    name: Test formulae (${{ matrix.os }})
     strategy:
       matrix:
         os: [macos-26]
@@ -25,10 +30,10 @@ jobs:
     runs-on: ${{ matrix.os }}
     container: ${{ fromJSON(toJSON(matrix.container)) }} # zizmor: ignore[unpinned-images]
     permissions:
-      actions: read
-      checks: read
+      actions: read # Homebrew setup inspects workflow metadata.
+      checks: read # Homebrew test-bot reports check context.
       contents: read
-      pull-requests: read
+      pull-requests: read # Homebrew test-bot resolves pull-request changes.
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew

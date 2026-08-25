@@ -1,0 +1,162 @@
+name: Sync Proqi release
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+concurrency:
+  group: sync-proqi-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Verify latest stable release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      attestations: read # Verify tag-bound Proqi provenance and SBOM claims.
+      contents: read
+    outputs:
+      changed: ${{ steps.candidate.outputs.changed }}
+      tag: ${{ steps.candidate.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - id: candidate
+        name: Download and verify release formula
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PROQI_REPOSITORY: oborchers/proqi
+        run: |
+          tag="$(gh release view --repo "$PROQI_REPOSITORY" --json tagName,isDraft,isPrerelease \
+            --jq 'select(.isDraft == false and .isPrerelease == false) | .tagName')"
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          mkdir -p candidate/release
+          gh release download "$tag" --repo "$PROQI_REPOSITORY" --dir candidate/release \
+            --pattern 'proqi.rb' --pattern 'proqi-*.tar.gz' --pattern 'proqi-*.tar.gz.sha256' \
+            --pattern 'proqi-*.tar.gz.spdx.json' --pattern 'SHA256SUMS'
+          cd candidate/release
+          test "$(find . -maxdepth 1 -type f | wc -l | tr -d ' ')" = 11
+          shasum -a 256 -c SHA256SUMS
+          for checksum in ./*.sha256; do shasum -a 256 -c "$checksum"; done
+          for sbom in ./*.spdx.json; do jq -e '.spdxVersion == "SPDX-2.3"' "$sbom"; done
+          for archive in ./*.tar.gz; do
+            gh attestation verify "$archive" --repo "$PROQI_REPOSITORY" \
+              --signer-workflow "github.com/${PROQI_REPOSITORY}/.github/workflows/release.yml" \
+              --source-ref "refs/tags/${tag}"
+            gh attestation verify "$archive" --repo "$PROQI_REPOSITORY" \
+              --signer-workflow "github.com/${PROQI_REPOSITORY}/.github/workflows/release.yml" \
+              --source-ref "refs/tags/${tag}" --predicate-type https://spdx.dev/Document/v2.3
+          done
+          ruby -c proqi.rb
+          rg -F "releases/download/${tag}/" proqi.rb
+          for checksum in ./*.sha256; do
+            digest="$(cut -d ' ' -f 1 "$checksum")"
+            rg -F "sha256 \"${digest}\"" proqi.rb
+          done
+          cd ../..
+          current_tag="$(sed -n 's#.*releases/download/\(v[0-9][0-9.]*\)/.*#\1#p' Formula/proqi.rb | head -n 1)"
+          test -n "$current_tag"
+          if [[ "$current_tag" = "$tag" ]]; then
+            cmp Formula/proqi.rb candidate/release/proqi.rb
+            changed=false
+          elif [[ "$(printf '%s\n%s\n' "$current_tag" "$tag" | sort -V | tail -n 1)" = "$current_tag" ]]; then
+            echo "Refusing to downgrade tap from $current_tag to $tag" >&2
+            exit 1
+          else
+            changed=true
+          fi
+          cp candidate/release/proqi.rb candidate/proqi.rb
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        if: steps.candidate.outputs.changed == 'true'
+        with:
+          if-no-files-found: error
+          name: proqi-formula-${{ steps.candidate.outputs.tag }}
+          path: candidate/proqi.rb
+          retention-days: 1
+
+  test:
+    name: Test formula (${{ matrix.os }})
+    needs: prepare
+    if: needs.prepare.outputs.changed == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-26]
+        include:
+          - os: ubuntu-latest
+            container:
+              image: ghcr.io/homebrew/brew:main
+              options: --privileged
+    runs-on: ${{ matrix.os }}
+    container: ${{ fromJSON(toJSON(matrix.container)) }} # zizmor: ignore[unpinned-images]
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: proqi-formula-${{ needs.prepare.outputs.tag }}
+          path: candidate
+      - name: Set up Homebrew
+        id: setup-homebrew
+        uses: Homebrew/actions/setup-homebrew@a657b8b0cd35d0f65cce41fce9b24cf054b49869 # 2026.08.24.1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Test exact candidate formula
+        env:
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          cp candidate/proqi.rb Formula/proqi.rb
+          ruby -c Formula/proqi.rb
+          brew style Formula/proqi.rb
+          brew audit --strict --formula Formula/proqi.rb
+          brew install --formula ./Formula/proqi.rb
+          brew test proqi
+          test "$(proqi --version)" = "proqi ${TAG#v}"
+
+  commit:
+    name: Publish verified formula
+    needs: [prepare, test]
+    if: needs.prepare.outputs.changed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: write # Commit the exact formula that passed both platform jobs.
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@70fc10c6e5e1ce46ad2ea6f2b72d43f7d47b13c3 # v8.0.0
+        with:
+          name: proqi-formula-${{ needs.prepare.outputs.tag }}
+          path: candidate
+      - name: Commit tested formula
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+        run: |
+          cp candidate/proqi.rb Formula/proqi.rb
+          git diff --check
+          git diff --exit-code --quiet Formula/proqi.rb && exit 0
+          current_sha="$(gh api "repos/${GITHUB_REPOSITORY}/contents/Formula/proqi.rb" --jq .sha)"
+          content="$(base64 < Formula/proqi.rb | tr -d '\n')"
+          gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/Formula/proqi.rb" \
+            -f message="Update proqi to ${TAG#v}" \
+            -f content="$content" \
+            -f sha="$current_sha" \
+            -f branch=main >/dev/null
