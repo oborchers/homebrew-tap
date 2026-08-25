@@ -1,6 +1,8 @@
 class Proqi < Formula
   desc "Agent-optimized terminal scratchpad for follow-up prompts"
   homepage "https://github.com/oborchers/proqi"
+  url "https://github.com/oborchers/proqi/releases/download/v0.1.0/proqi-x86_64-unknown-linux-gnu.tar.gz"
+  sha256 "9a053e672e1ad2db6cce617d121a8b0781415a20a68e626bbb3476065c6eba60"
   license "MIT"
 
   on_macos do
@@ -15,10 +17,6 @@ class Proqi < Formula
 
   on_linux do
     depends_on arch: :x86_64
-    on_intel do
-      url "https://github.com/oborchers/proqi/releases/download/v0.1.0/proqi-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "9a053e672e1ad2db6cce617d121a8b0781415a20a68e626bbb3476065c6eba60"
-    end
   end
 
   def install
