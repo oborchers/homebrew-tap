@@ -141,12 +141,14 @@ jobs:
         env:
           TAG: ${{ needs.prepare.outputs.tag }}
         run: |
-          cp candidate/proqi.rb Formula/proqi.rb
-          ruby -c Formula/proqi.rb
-          brew style Formula/proqi.rb
-          brew audit --strict --formula Formula/proqi.rb
-          brew install --formula ./Formula/proqi.rb
-          brew test proqi
+          tap_path="$(brew --repository oborchers/tap)"
+          test -d "$tap_path/Formula"
+          cp "$GITHUB_WORKSPACE/candidate/proqi.rb" "$tap_path/Formula/proqi.rb"
+          ruby -c "$tap_path/Formula/proqi.rb"
+          brew style "$tap_path/Formula/proqi.rb"
+          brew audit --strict --formula oborchers/tap/proqi
+          brew install --formula oborchers/tap/proqi
+          brew test oborchers/tap/proqi
           test "$(proqi --version)" = "proqi ${TAG#v}"
 
   commit:
