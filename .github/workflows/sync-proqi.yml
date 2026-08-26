@@ -144,7 +144,6 @@ jobs:
           tap_path="$(brew --repository oborchers/tap)"
           test -d "$tap_path/Formula"
           cp "$GITHUB_WORKSPACE/candidate/proqi.rb" "$tap_path/Formula/proqi.rb"
-          ruby -c "$tap_path/Formula/proqi.rb"
           brew style "$tap_path/Formula/proqi.rb"
           brew audit --strict --formula oborchers/tap/proqi
           brew install --formula oborchers/tap/proqi
