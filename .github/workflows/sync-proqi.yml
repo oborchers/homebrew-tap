@@ -4,8 +4,6 @@ on:
   repository_dispatch:
     types:
       - proqi_release_published
-  schedule:
-    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
