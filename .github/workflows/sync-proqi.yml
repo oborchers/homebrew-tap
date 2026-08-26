@@ -63,9 +63,11 @@ jobs:
           mkdir -p candidate/release
           gh release download "$tag" --repo "$PROQI_REPOSITORY" --dir candidate/release \
             --pattern 'proqi.rb' --pattern 'proqi-*.tar.gz' --pattern 'proqi-*.tar.gz.sha256' \
-            --pattern 'proqi-*.tar.gz.spdx.json' --pattern 'SHA256SUMS'
+            --pattern 'proqi-*.tar.gz.spdx.json' --pattern 'proqi_*.deb' \
+            --pattern 'proqi_*.deb.sha256' --pattern 'proqi_*.deb.spdx.json' \
+            --pattern 'SHA256SUMS'
           cd candidate/release
-          test "$(find . -maxdepth 1 -type f | wc -l | tr -d ' ')" = 11
+          test "$(find . -maxdepth 1 -type f | wc -l | tr -d ' ')" = 14
           shasum -a 256 -c SHA256SUMS
           for checksum in ./*.sha256; do shasum -a 256 -c "$checksum"; done
           for sbom in ./*.spdx.json; do jq -e '.spdxVersion == "SPDX-2.3"' "$sbom"; done
@@ -80,7 +82,7 @@ jobs:
           done
           ruby -c proqi.rb
           grep -F "releases/download/${tag}/" proqi.rb
-          for checksum in ./*.sha256; do
+          for checksum in ./proqi-*.tar.gz.sha256; do
             digest="$(cut -d ' ' -f 1 "$checksum")"
             grep -F "sha256 \"${digest}\"" proqi.rb
           done
