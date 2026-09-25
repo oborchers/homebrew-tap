@@ -1,17 +1,17 @@
 class Proqi < Formula
   desc "Agent-optimized terminal scratchpad for follow-up prompts"
   homepage "https://github.com/oborchers/proqi"
-  url "https://github.com/oborchers/proqi/releases/download/v0.12.0/proqi-x86_64-unknown-linux-gnu.tar.gz"
-  sha256 "0901d3a1ad982b1376257750a6e80029a06e4049190eedeb39b187f1053c7c6e"
+  url "https://github.com/oborchers/proqi/releases/download/v0.13.0/proqi-x86_64-unknown-linux-gnu.tar.gz"
+  sha256 "e5a76905adab20be89f16f4865b57444af4aba1145568f3b0686c9e5a1fe20a5"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.arm?
-      url "https://github.com/oborchers/proqi/releases/download/v0.12.0/proqi-aarch64-apple-darwin.tar.gz"
-      sha256 "e8fb02f399ec7b43fb6af45147b528600c9936c94a0004c589fc43f75e34b6aa"
+      url "https://github.com/oborchers/proqi/releases/download/v0.13.0/proqi-aarch64-apple-darwin.tar.gz"
+      sha256 "d78442045d7c38ae452d18d47a3b7b35cba180197fa7e109d8666d6099d65e13"
     else
-      url "https://github.com/oborchers/proqi/releases/download/v0.12.0/proqi-x86_64-apple-darwin.tar.gz"
-      sha256 "16322693f615a2c4f3cd056cc0d7aaa463dfd22c23b521fed2fed0390f75e117"
+      url "https://github.com/oborchers/proqi/releases/download/v0.13.0/proqi-x86_64-apple-darwin.tar.gz"
+      sha256 "4c20fe562a413501f92c180dbf2f56f591ce84780d263dac51161ac17aa8db89"
     end
   end
 
