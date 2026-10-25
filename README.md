@@ -27,6 +27,10 @@ Release archives, checksums, SBOMs, and attestations are published with each [Pr
 
 The Proqi release workflow sends a scoped GitHub App event after publishing a stable release. This tap validates the notified tag and source commit, independently verifies every release artifact, tests the candidate formula, and commits only the exact verified formula. An explicit manual workflow dispatch remains available for recovery. The tap does not poll for releases.
 
+## Author
+
+Built by [Dr. Oliver Borchers](https://www.drborchers.com), Executive AI and Automation Partner and Head of AI Engineering at IU Group.
+
 ## License
 
 The tap and Proqi are available under the MIT License.
